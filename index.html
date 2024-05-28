@@ -17,6 +17,19 @@
         #loading-text {
             display: none;
         }
+
+        .btn {
+            background-color: blue;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .btn-clear {
+            background-color: red;
+        }
     </style>
 </head>
 
@@ -28,9 +41,12 @@
         <span>-</span>
         <input type="text" class="i" size="3" id="number" value="" />
     </div>
+    <button type="button" class="btn" onclick="prevImage()">上一张</button>
+    <button type="button" class="btn" onclick="nextImage()">下一张</button>
     <button type="button" class="btn" onclick="checkInput()">查询</button>
     <button type="button" class="btn" onclick="downloadImage()">下载图片</button>
-    <button type="button" class="btn" onclick="nextImage()">下一张</button>
+    <button type="button" class="btn" onclick="pasteClipboard()">粘贴</button>
+    <button type="button" class="btn btn-clear" onclick="clearInput()">清空</button>
     <br />
     <hr />
     <span id="loading-text"></span>
@@ -38,13 +54,25 @@
     <noscript>无法使用JavaScript</noscript>
 
     <script>
+        let requestCounter = 0;
+
+        function pasteClipboard() {
+            navigator.clipboard.readText().then(text => {
+                var pidInput = document.getElementById("pid");
+                pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
+            }).catch(err => {
+                console.error('Failed to read clipboard contents: ', err);
+            });
+        }
+
         function checkInput() {
+            const currentRequest = ++requestCounter;
             var pid = document.getElementById("pid").value;
             var number = document.getElementById("number").value;
             var image = document.getElementById('image');
             var loadingText = document.getElementById('loading-text');
 
-            // 不再显示上一次的图片
+            // 取消之前的加载状态
             image.src = "";
             image.style.display = "none";
 
@@ -60,20 +88,24 @@
 
                 var img = new Image();
                 img.onload = function() {
-                    image.src = imageUrl;
-                    image.alt = "";
-                    loadingText.style.display = "none";
-                    image.style.display = "block";
+                    if (requestCounter === currentRequest) {
+                        image.src = imageUrl;
+                        image.alt = "";
+                        loadingText.style.display = "none";
+                        image.style.display = "block";
+                    }
                 };
                 img.onerror = function() {
-                    if (type === "jpg") {
-                        tryImage("png");
-                    } else if (type === "png") {
-                        tryImage("gif");
-                    } else {
-                        loadingText.style.display = "none";
-                        image.alt = "图片不存在";
-                        image.style.display = "block";
+                    if (requestCounter === currentRequest) {
+                        if (type === "jpg") {
+                            tryImage("png");
+                        } else if (type === "png") {
+                            tryImage("gif");
+                        } else {
+                            loadingText.style.display = "none";
+                            image.alt = "图片不存在";
+                            image.style.display = "block";
+                        }
                     }
                 };
                 img.src = imageUrl;
@@ -94,6 +126,17 @@
             checkInput();
         }
 
+        function prevImage() {
+            var numberInput = document.getElementById("number");
+            var currentValue = parseInt(numberInput.value.trim()); // Remove leading and trailing whitespace
+            if (currentValue > 1) {
+                numberInput.value = currentValue - 1;
+            } else {
+                numberInput.value = "";
+            }
+            checkInput();
+        }
+
         function downloadImage() {
             var imageUrl = document.getElementById("image").src;
 
@@ -102,36 +145,35 @@
                 return;
             }
 
-            // 创建一个隐藏的链接
-            var a = document.createElement('a');
-            a.href = imageUrl;
-
-            // 添加正在下载的提示文本
-            var loadingText = document.getElementById('loading-text');
-            loadingText.innerText = "正在下载图片...";
-            loadingText.style.display = "inline";
-
-            // 延迟下载以确保提示文本已经显示
-            setTimeout(function() {
-                a.download = 'pixiv_image'; // 设置下载文件名
-                document.body.appendChild(a);
-
-                // 触发点击事件
-                a.click();
-
-                // 清理
-                document.body.removeChild(a);
-
-                // 在手机端无法下载时提示下载失败
-                setTimeout(function() {
-                    if (document.getElementById("image").src === "") {
-                        alert("下载失败：图片不存在");
+            fetch(imageUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("下载失败：图片不存在");
                     }
-                }, 500);
+                    return response.blob();
+                })
+                .then(blob => {
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'pixiv_image';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    alert(error.message);
+                });
+        }
 
-                // 下载完成后隐藏提示文本
-                loadingText.style.display = "none";
-            }, 100);
+        function clearInput() {
+            document.getElementById("pid").value = "";
+            document.getElementById("number").value = "";
+            document.getElementById("image").src = "";
+            document.getElementById("image").style.display = "none";
+            document.getElementById('loading-text').style.display = "none";
         }
     </script>
 </body>
