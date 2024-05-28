@@ -140,7 +140,7 @@
         function downloadImage() {
             var imageUrl = document.getElementById("image").src;
 
-            if (!imageUrl || imageUrl === "https://pixiv.re" || imageUrl === "") {
+            if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/") {
                 alert("下载失败：图片不存在");
                 return;
             }
@@ -157,7 +157,7 @@
                     var a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = 'pixiv_image';
+                    a.download = 'pixiv_image' + getImageExtension(imageUrl);
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
@@ -179,6 +179,14 @@
                 });
         }
 
+        function getImageExtension(url) {
+            var ext = url.split('.').pop();
+            if (['jpg', 'png', 'gif'].includes(ext)) {
+                return '.' + ext;
+            }
+            return '.jpg';
+        }
+
         function clearInput() {
             document.getElementById("pid").value = "";
             document.getElementById("number").value = "";
@@ -190,4 +198,3 @@
 </body>
 
 </html>
- 
