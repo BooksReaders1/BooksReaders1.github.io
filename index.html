@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ch">
+
+<head>
+    <meta charset="utf-8" />
+    <title>pixiv图片查询</title>
+    <style>
+        .input-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-container input {
+            margin-right: 5px;
+        }
+
+        #loading-text {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <p>在框内输入作品ID（如82775556）再按“查询”按钮即可查看对应作品</p>
+    <hr />
+    <div class="input-container">
+        <input type="text" class="i" size="10" autofocus id="pid" placeholder="输入pid" required="required" />
+        <span>-</span>
+        <input type="text" class="i" size="3" id="number" value="" />
+    </div>
+    <button type="button" class="btn" onclick="checkInput()">查询</button>
+    <button type="button" class="btn" onclick="downloadImage()">下载图片</button>
+    <button type="button" class="btn" onclick="nextImage()">下一张</button>
+    <br />
+    <hr />
+    <span id="loading-text"></span>
+    <img id="image" src="" width="500" alt="" style="display: none;" />
+    <noscript>无法使用JavaScript</noscript>
+
+    <script>
+        function checkInput() {
+            var pid = document.getElementById("pid").value;
+            var number = document.getElementById("number").value;
+            var image = document.getElementById('image');
+            var loadingText = document.getElementById('loading-text');
+
+            // 不再显示上一次的图片
+            image.src = "";
+            image.style.display = "none";
+
+            var tryImage = function(type) {
+                var imageUrl = "https://pixiv.re/" + pid;
+                if (number !== "") {
+                    imageUrl += "-" + number;
+                }
+                imageUrl += "." + type;
+
+                loadingText.innerText = "正在请求 " + imageUrl;
+                loadingText.style.display = "inline";
+
+                var img = new Image();
+                img.onload = function() {
+                    image.src = imageUrl;
+                    image.alt = "";
+                    loadingText.style.display = "none";
+                    image.style.display = "block";
+                };
+                img.onerror = function() {
+                    if (type === "jpg") {
+                        tryImage("png");
+                    } else if (type === "png") {
+                        tryImage("gif");
+                    } else {
+                        loadingText.style.display = "none";
+                        image.alt = "图片不存在";
+                        image.style.display = "block";
+                    }
+                };
+                img.src = imageUrl;
+            };
+
+            tryImage("jpg");
+        }
+
+        function nextImage() {
+            var numberInput = document.getElementById("number");
+            var currentValue = numberInput.value.trim(); // Remove leading and trailing whitespace
+            if (currentValue === "") {
+                numberInput.value = "1";
+            } else {
+                var newValue = parseInt(currentValue) + 1;
+                numberInput.value = newValue;
+            }
+            checkInput();
+        }
+
+        function downloadImage() {
+            var imageUrl = document.getElementById("image").src;
+
+            if (!imageUrl || imageUrl === "https://pixiv.re" || imageUrl === "") {
+                alert("下载失败：图片不存在");
+                return;
+            }
+
+            // 创建一个隐藏的链接
+            var a = document.createElement('a');
+            a.href = imageUrl;
+
+            // 添加正在下载的提示文本
+            var loadingText = document.getElementById('loading-text');
+            loadingText.innerText = "正在下载图片...";
+            loadingText.style.display = "inline";
+
+            // 延迟下载以确保提示文本已经显示
+            setTimeout(function() {
+                a.download = 'pixiv_image'; // 设置下载文件名
+                document.body.appendChild(a);
+
+                // 触发点击事件
+                a.click();
+
+                // 清理
+                document.body.removeChild(a);
+
+                // 在手机端无法下载时提示下载失败
+                setTimeout(function() {
+                    if (document.getElementById("image").src === "") {
+                        alert("下载失败：图片不存在");
+                    }
+                }, 500);
+
+                // 下载完成后隐藏提示文本
+                loadingText.style.display = "none";
+            }, 100);
+        }
+    </script>
+</body>
+
+</html>
