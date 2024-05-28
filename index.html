@@ -47,6 +47,7 @@
     <button type="button" class="btn" onclick="downloadImage()">下载图片</button>
     <button type="button" class="btn" onclick="pasteClipboard()">粘贴</button>
     <button type="button" class="btn btn-clear" onclick="clearInput()">清空</button>
+    <button type="button" class="btn" onclick="refreshPage()">刷新</button>
     <br />
     <hr />
     <span id="loading-text"></span>
@@ -56,14 +57,16 @@
     <script>
         let requestCounter = 0;
 
-        function pasteClipboard() {
-            navigator.clipboard.readText().then(text => {
-                var pidInput = document.getElementById("pid");
-                pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
-            }).catch(err => {
-                console.error('Failed to read clipboard contents: ', err);
-            });
-        }
+function pasteClipboard() {
+    navigator.clipboard.readText().then(text => {
+        var pidInput = document.getElementById("pid");
+        pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
+        // 清空第二个输入框
+        document.getElementById("number").value = "";
+    }).catch(err => {
+        console.error('Failed to read clipboard contents: ', err);
+    });
+}
 
         function checkInput() {
             const currentRequest = ++requestCounter;
@@ -188,11 +191,13 @@
         }
 
         function clearInput() {
-            document.getElementById("pid").value = "";
-            document.getElementById("number").value = "";
             document.getElementById("image").src = "";
             document.getElementById("image").style.display = "none";
             document.getElementById('loading-text').style.display = "none";
+        }
+
+        function refreshPage() {
+            checkInput(); // 重新发送请求
         }
     </script>
 </body>
