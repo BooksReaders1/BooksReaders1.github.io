@@ -106,20 +106,17 @@
             }
         }
 
-        function setLoadingState(isLoading) {
-            const loadingText = document.getElementById('loading-text');
-            loadingText.textContent = isLoading ? `正在加载 ID:${document.getElementById("pid").value} 序号:${document.getElementById("number").value}` : "";
 
-            loadingText.style.display = isLoading ? 'inline' : 'none';
-        }
 
         function checkInput() {
-            setLoadingState(true);
+
 
             const currentRequest = ++requestCounter;
             var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
             var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
             var image = document.getElementById('image');
+ var loadingText = document.getElementById('loading-text');
+
 
             // 取消之前的加载状态
             image.src = "";
@@ -132,12 +129,15 @@
                 }
                 imageUrl += "." + type;
 
+                loadingText.innerText = "正在请求 " + imageUrl;
+                loadingText.style.display = "inline";
+
                 var img = new Image();
                 img.onload = function() {
                     if (requestCounter === currentRequest) {
                         image.src = imageUrl;
                         image.alt = "";
-                        setLoadingState(false);
+                                              loadingText.style.display = "none";
                         image.style.display = "block";
                     }
                 };
@@ -148,7 +148,7 @@
                         } else if (type === "png") {
                             tryImage("gif");
                         } else {
-                            setLoadingState(false);
+                                                  loadingText.style.display = "none";
                             image.alt = "图片不存在";
                             image.style.display = "block";
                         }
@@ -190,7 +190,6 @@
                 return;
             }
 
-            setLoadingState(true);
 
             fetch(imageUrl)
                 .then(response => {
@@ -229,9 +228,7 @@
                 })
                 .catch(error => {
                     alert(error.message);
-                })
-                .finally(() => {
-                    setLoadingState(false);
+
                 });
         }
 
