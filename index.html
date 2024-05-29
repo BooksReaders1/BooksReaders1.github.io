@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="zh">
-
 <head>
     <meta charset="utf-8" />
     <title>pixiv图片查询</title>
@@ -10,63 +9,63 @@
             align-items: center;
             margin-bottom: 10px;
         }
+css
+复制代码
+    .input-container input {
+        margin-right: 5px;
+    }
 
-        .input-container input {
-            margin-right: 5px;
+    #loading-text {
+        display: none;
+    }
+
+    .btn {
+        background-color: blue;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        margin: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, box-shadow 0.3s;
+    }
+
+    .btn:hover {
+        background-color: darkblue;
+    }
+
+    .btn:active {
+        background-color: navy;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn:disabled {
+        background-color: grey;
+        cursor: not-allowed;
+    }
+
+    .btn-clear {
+        background-color: red;
+    }
+
+    /* CSS媒体查询 */
+    @media (max-width: 600px) {
+        .input-container {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        #loading-text {
-            display: none;
+        .input-container input {
+            margin-bottom: 10px;
+            margin-right: 0;
         }
 
         .btn {
-            background-color: blue;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            margin: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s, box-shadow 0.3s;
+            width: 100%;
+            margin: 5px 0;
         }
-
-        .btn:hover {
-            background-color: darkblue;
-        }
-
-        .btn:active {
-            background-color: navy;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-        }
-
-        .btn:disabled {
-            background-color: grey;
-            cursor: not-allowed;
-        }
-
-        .btn-clear {
-            background-color: red;
-        }
-
-        /* CSS媒体查询 */
-        @media (max-width: 600px) {
-            .input-container {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .input-container input {
-                margin-bottom: 10px;
-                margin-right: 0;
-            }
-
-            .btn {
-                width: 100%;
-                margin: 5px 0;
-            }
-        }
-    </style>
+    }
+</style>
 </head>
-
 <body>
     <p>在框内输入作品ID（如82775556）再按“查询”按钮即可查看对应作品</p>
     <hr />
@@ -77,180 +76,194 @@
     </div>
     <button type="button" class="btn" id="prevBtn" onclick="prevImage()">上一张</button>
     <button type="button" class="btn" id="nextBtn" onclick="nextImage()">下一张</button>
-    <button type="button" class="btn" id="checkBtn" onclick="checkInput()">查询</button>
-    <button type="button" class="btn" id="downloadBtn" onclick="downloadImage()">下载图片</button>
-    <button type="button" class="btn" id="pasteBtn" onclick="pasteClipboard()">粘贴</button>
+    <button type="button" class="btn" id="checkBtn" onclick="checkInputWithDisable(this)">查询</button>
+    <button type="button" class="btn" id="downloadBtn" onclick="downloadImageWithDisable(this)">下载图片</button>
+    <button type="button" class="btn" id="pasteBtn" onclick="pasteClipboardWithDisable(this)">粘贴</button>
     <button type="button" class="btn btn-clear" id="clearBtn" onclick="clearInput()">清空</button>
-    <button type="button" class="btn" id="refreshBtn" onclick="refreshPage()">刷新</button>
+    <button type="button" class="btn" id="refreshBtn" onclick="refreshPageWithDisable(this)">刷新</button>
     <br />
     <hr />
     <span id="loading-text"></span>
     <img id="image" src="" width="500" alt="" style="display: none;" />
     <noscript>无法使用JavaScript</noscript>
 
-    <script>
-        let requestCounter = 0;
+<script>
+    let requestCounter = 0;
 
-        function filterInput(event) {
-            event.target.value = event.target.value.replace(/\D/g, '');
+    function filterInput(event) {
+        event.target.value = event.target.value.replace(/\D/g, '');
+    }
+
+    async function pasteClipboardWithDisable(button) {
+        try {
+            button.disabled = true;
+            const text = await navigator.clipboard.readText();
+            const pidInput = document.getElementById("pid");
+            pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
+            document.getElementById("number").value = "";
+        } catch (err) {
+            console.error('Failed to read clipboard contents: ', err);
+        } finally {
+            setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
         }
+    }
 
-        async function pasteClipboard() {
-            try {
-                const text = await navigator.clipboard.readText();
-                const pidInput = document.getElementById("pid");
-                pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
-                document.getElementById("number").value = "";
-            } catch (err) {
-                console.error('Failed to read clipboard contents: ', err);
+    function checkInputWithDisable(button) {
+        button.disabled = true;
+        checkInput();
+        setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
+    }
+
+    function downloadImageWithDisable(button) {
+        button.disabled = true;
+        downloadImage();
+        setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
+    }
+
+    function refreshPageWithDisable(button) {
+        button.disabled = true;
+        refreshPage();
+        setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
+    }
+
+    function checkInput() {
+        const currentRequest = ++requestCounter;
+        var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
+        var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
+        var image = document.getElementById('image');
+        var loadingText = document.getElementById('loading-text');
+
+        // 取消之前的加载状态
+        image.src = "";
+        image.style.display = "none";
+
+        var tryImage = function(type) {
+            var imageUrl = "https://pixiv.re/" + pid;
+            if (number !== "") {
+                imageUrl += "-" + number;
             }
-        }
+            imageUrl += "." + type;
 
+            loadingText.innerText = "正在请求 " + imageUrl;
+            loadingText.style.display = "inline";
 
-
-        function checkInput() {
-
-
-            const currentRequest = ++requestCounter;
-            var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
-            var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
-            var image = document.getElementById('image');
- var loadingText = document.getElementById('loading-text');
-
-
-            // 取消之前的加载状态
-            image.src = "";
-            image.style.display = "none";
-
-            var tryImage = function(type) {
-                var imageUrl = "https://pixiv.re/" + pid;
-                if (number !== "") {
-                    imageUrl += "-" + number;
+            var img = new Image();
+            img.onload = function() {
+                if (requestCounter === currentRequest) {
+                    image.src = imageUrl;
+                    image.alt = "";
+                    loadingText.style.display = "none";
+                    image.style.display = "block";
                 }
-                imageUrl += "." + type;
-
-                loadingText.innerText = "正在请求 " + imageUrl;
-                loadingText.style.display = "inline";
-
-                var img = new Image();
-                img.onload = function() {
-                    if (requestCounter === currentRequest) {
-                        image.src = imageUrl;
-                        image.alt = "";
-                                              loadingText.style.display = "none";
+            };
+            img.onerror = function() {
+                if (requestCounter === currentRequest) {
+                    if (type === "jpg") {
+                        tryImage("png");
+                    } else if (type === "png") {
+                        tryImage("gif");
+                    } else {
+                        loadingText.style.display = "none";
+                        image.alt = "图片不存在";
                         image.style.display = "block";
                     }
-                };
-                img.onerror = function() {
-                    if (requestCounter === currentRequest) {
-                        if (type === "jpg") {
-                            tryImage("png");
-                        } else if (type === "png") {
-                            tryImage("gif");
-                        } else {
-                                                  loadingText.style.display = "none";
-                            image.alt = "图片不存在";
-                            image.style.display = "block";
-                        }
-                    }
-                };
-                img.src = imageUrl;
+                }
             };
+            img.src = imageUrl;
+        };
 
-            tryImage("jpg");
+        tryImage("jpg");
+    }
+
+    function nextImage() {
+        var numberInput = document.getElementById("number");
+        var currentValue = numberInput.value.trim().replace(/\D/g, ''); // 去除空格并仅保留数字
+        if (currentValue === "") {
+            numberInput.value = "2";
+        } else {
+            var newValue = parseInt(currentValue) + 1;
+            numberInput.value = newValue;
+        }
+        checkInput();
+    }
+
+    function prevImage() {
+        var numberInput = document.getElementById("number");
+        var currentValue = parseInt(numberInput.value.trim().replace(/\D/g, '')); // 去除空格并仅保留数字
+        if (currentValue > 1) {
+            numberInput.value = currentValue - 1;
+        } else {
+            numberInput.value = "";
+        }
+        checkInput();
+    }
+
+    function downloadImage() {
+        var imageUrl = document.getElementById("image").src;
+        if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
+            alert("下载失败：图片不存在");
+            return;
         }
 
-        function nextImage() {
-            var numberInput = document.getElementById("number");
-            var currentValue = numberInput.value.trim().replace(/\D/g, ''); // 去除空格并仅保留数字
-            if (currentValue === "") {
-                numberInput.value = "1";
-            } else {
-                var newValue = parseInt(currentValue) + 1;
-                numberInput.value = newValue;
-            }
-            checkInput();
+        fetch(imageUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("下载失败：图片不存在");
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'pixiv_image' + getImageExtension(imageUrl);
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                // 针对iOS设备，使用分享功能
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Pixiv Image',
+                        text: 'Download the image',
+                        url: url
+                    }).catch(error => console.error('Error sharing', error));
+                } else {
+                    // 使用Filesaver.js下载文件到iOS设备的文件系统
+                    var blobUrl = window.URL.createObjectURL(blob);
+                    var link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = 'pixiv_image' + getImageExtension(imageUrl);
+                    link.click();
+                    window.URL.revokeObjectURL(blobUrl);
+                }
+            })
+            .catch(error => {
+                alert(error.message);
+            });
+    }
+
+    function getImageExtension(url) {
+        var ext = url.split('.').pop();
+        if (['jpg', 'png', 'gif'].includes(ext)) {
+            return '.' + ext;
         }
+        return '.jpg';
+    }
 
-        function prevImage() {
-            var numberInput = document.getElementById("number");
-            var currentValue = parseInt(numberInput.value.trim().replace(/\D/g, '')); // 去除空格并仅保留数字
-            if (currentValue > 1) {
-                numberInput.value = currentValue - 1;
-            } else {
-                numberInput.value = "";
-            }
-            checkInput();
-        }
+    function clearInput() {
+        document.getElementById("pid").value = ""; // 清空作品ID输入框
+        document.getElementById("number").value = ""; // 清空编号输入框
+        document.getElementById("image").src = ""; // 清空图片
+        document.getElementById("image").style.display = "none"; // 隐藏图片
+        document.getElementById('loading-text').style.display = "none"; // 隐藏加载文本
+    }
 
-        function downloadImage() {
-            var imageUrl = document.getElementById("image").src;
-            if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
-                alert("下载失败：图片不存在");
-                return;
-            }
-
-
-            fetch(imageUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("下载失败：图片不存在");
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    var url = window.URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = 'pixiv_image' + getImageExtension(imageUrl);
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-
-                    // 针对iOS设备，使用分享功能
-                    if (navigator.share) {
-                        navigator.share({
-                            title: 'Pixiv Image',
-                            text: 'Download the image',
-                            url: url
-                        }).catch(error => console.error('Error sharing', error));
-                    } else {
-                        // 使用Filesaver.js下载文件到iOS设备的文件系统
-                        var blobUrl = window.URL.createObjectURL(blob);
-                        var link = document.createElement('a');
-                        link.href = blobUrl;
-                        link.download = 'pixiv_image' + getImageExtension(imageUrl);
-                        link.click();
-                        window.URL.revokeObjectURL(blobUrl);
-                    }
-                })
-                .catch(error => {
-                    alert(error.message);
-
-                });
-        }
-
-        function getImageExtension(url) {
-            var ext = url.split('.').pop();
-            if (['jpg', 'png', 'gif'].includes(ext)) {
-                return '.' + ext;
-            }
-            return '.jpg';
-        }
-
-        function clearInput() {
-            document.getElementById("pid").value = ""; // 清空作品ID输入框
-            document.getElementById("number").value = ""; // 清空编号输入框
-            document.getElementById("image").src = ""; // 清空图片
-            document.getElementById("image").style.display = "none"; // 隐藏图片
-            document.getElementById('loading-text').style.display = "none"; // 隐藏加载文本
-        }
-
-        function refreshPage() {
-            checkInput(); // 重新发送请求
-        }
+    function refreshPage() {
+        checkInput(); // 重新发送请求
+    }
 
         document.getElementById("pid").addEventListener("input", filterInput);
         document.getElementById("number").addEventListener("input", filterInput);
