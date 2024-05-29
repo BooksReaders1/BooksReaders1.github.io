@@ -26,6 +26,21 @@
             padding: 5px 10px;
             margin: 5px;
             cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .btn:hover {
+            background-color: darkblue;
+        }
+
+        .btn:active {
+            background-color: navy;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            background-color: grey;
+            cursor: not-allowed;
         }
 
         .btn-clear {
@@ -60,13 +75,13 @@
         <span>-</span>
         <input type="text" class="i" size="3" id="number" value="" />
     </div>
-    <button type="button" class="btn" onclick="prevImage()">上一张</button>
-    <button type="button" class="btn" onclick="nextImage()">下一张</button>
-    <button type="button" class="btn" onclick="checkInput()">查询</button>
-    <button type="button" class="btn" onclick="downloadImage()">下载图片</button>
-    <button type="button" class="btn" onclick="pasteClipboard()">粘贴</button>
-    <button type="button" class="btn btn-clear" onclick="clearInput()">清空</button>
-    <button type="button" class="btn" onclick="refreshPage()">刷新</button>
+    <button type="button" class="btn" id="prevBtn" onclick="prevImage()">上一张</button>
+    <button type="button" class="btn" id="nextBtn" onclick="nextImage()">下一张</button>
+    <button type="button" class="btn" id="checkBtn" onclick="checkInput()">查询</button>
+    <button type="button" class="btn" id="downloadBtn" onclick="downloadImage()">下载图片</button>
+    <button type="button" class="btn" id="pasteBtn" onclick="pasteClipboard()">粘贴</button>
+    <button type="button" class="btn btn-clear" id="clearBtn" onclick="clearInput()">清空</button>
+    <button type="button" class="btn" id="refreshBtn" onclick="refreshPage()">刷新</button>
     <br />
     <hr />
     <span id="loading-text"></span>
@@ -91,12 +106,20 @@
             }
         }
 
+        function setLoadingState(isLoading) {
+            const loadingText = document.getElementById('loading-text');
+            loadingText.textContent = isLoading ? `正在加载 ID:${document.getElementById("pid").value} 序号:${document.getElementById("number").value}` : "";
+
+            loadingText.style.display = isLoading ? 'inline' : 'none';
+        }
+
         function checkInput() {
+            setLoadingState(true);
+
             const currentRequest = ++requestCounter;
             var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
             var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
             var image = document.getElementById('image');
-            var loadingText = document.getElementById('loading-text');
 
             // 取消之前的加载状态
             image.src = "";
@@ -109,15 +132,12 @@
                 }
                 imageUrl += "." + type;
 
-                loadingText.innerText = "正在请求 " + imageUrl;
-                loadingText.style.display = "inline";
-
                 var img = new Image();
                 img.onload = function() {
                     if (requestCounter === currentRequest) {
                         image.src = imageUrl;
                         image.alt = "";
-                        loadingText.style.display = "none";
+                        setLoadingState(false);
                         image.style.display = "block";
                     }
                 };
@@ -128,7 +148,7 @@
                         } else if (type === "png") {
                             tryImage("gif");
                         } else {
-                            loadingText.style.display = "none";
+                            setLoadingState(false);
                             image.alt = "图片不存在";
                             image.style.display = "block";
                         }
@@ -165,11 +185,12 @@
 
         function downloadImage() {
             var imageUrl = document.getElementById("image").src;
-
             if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
                 alert("下载失败：图片不存在");
                 return;
             }
+
+            setLoadingState(true);
 
             fetch(imageUrl)
                 .then(response => {
@@ -189,19 +210,28 @@
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
 
-                    // 针对移动设备，尝试使用文件系统API或提示保存对话框
-                    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                        if (navigator.share) {
-                            navigator.share({
-                                title: 'Pixiv Image',
-                                text: 'Download the image',
-                                url: imageUrl
-                            }).catch(error => console.error('Error sharing', error));
-                        }
+                    // 针对iOS设备，使用分享功能
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Pixiv Image',
+                            text: 'Download the image',
+                            url: url
+                        }).catch(error => console.error('Error sharing', error));
+                    } else {
+                        // 使用Filesaver.js下载文件到iOS设备的文件系统
+                        var blobUrl = window.URL.createObjectURL(blob);
+                        var link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = 'pixiv_image' + getImageExtension(imageUrl);
+                        link.click();
+                        window.URL.revokeObjectURL(blobUrl);
                     }
                 })
                 .catch(error => {
                     alert(error.message);
+                })
+                .finally(() => {
+                    setLoadingState(false);
                 });
         }
 
@@ -228,10 +258,10 @@
         document.getElementById("pid").addEventListener("input", filterInput);
         document.getElementById("number").addEventListener("input", filterInput);
 
-        // 动态调整元素大小
         function adjustLayout() {
             const img = document.getElementById('image');
-            if (window.innerWidth < 600) {
+            const containerWidth = window.innerWidth;
+            if (containerWidth < 600) {
                 img.style.width = '100%';
             } else {
                 img.style.width = '500px';
@@ -244,3 +274,4 @@
 </body>
 
 </html>
+
