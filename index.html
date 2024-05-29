@@ -65,11 +65,11 @@
         async function pasteClipboard() {
             try {
                 const text = await navigator.clipboard.readText();
-                document.getElementById("pid").value = text.replace(/\D/g, ''); // 仅保留数字
+                const pidInput = document.getElementById("pid");
+                pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
                 document.getElementById("number").value = "";
             } catch (err) {
                 console.error('Failed to read clipboard contents: ', err);
-                alert("无法读取剪贴板内容，请手动粘贴。");
             }
         }
 
