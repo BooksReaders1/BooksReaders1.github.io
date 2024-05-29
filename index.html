@@ -113,12 +113,11 @@ css
         checkInput();
         setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
     }
-
-    function downloadImageWithDisable(button) {
-        button.disabled = true;
-        downloadImage();
-        setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
-    }
+        function downloadImageWithDisable(button) {
+            button.disabled = true;
+            downloadImageAndSaveToDevice();
+            setTimeout(() => button.disabled = false, 200);
+        }
 
     function refreshPageWithDisable(button) {
         button.disabled = true;
@@ -244,6 +243,46 @@ css
                 alert(error.message);
             });
     }
+
+async function downloadImageAndSaveToDevice() {
+            var imageUrl = document.getElementById("image").src;
+            if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
+                alert("下载失败：图片不存在");
+                return;
+            }
+
+            try {
+                const response = await fetch(imageUrl);
+                if (!response.ok) {
+                    throw new Error("下载失败：图片不存在");
+                }
+                const blob = await response.blob();
+
+                // 下载图片到本地
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'pixiv_image' + getImageExtension(imageUrl);
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                // 尝试保存图片到设备相册
+                try {
+                    if ('contacts' in navigator && 'write' in navigator.contacts) {
+                        await navigator.contacts.write(blob);
+                        alert("图片已保存到相册！");
+                    } 
+                } catch (error) {
+                    console.error("保存图片到设备相册失败:", error);
+                    alert("保存图片到设备相册失败：" + error.message);
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        }
 
     function getImageExtension(url) {
         var ext = url.split('.').pop();
