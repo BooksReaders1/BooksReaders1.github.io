@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ch">
+<html lang="zh">
 
 <head>
     <meta charset="utf-8" />
@@ -8,6 +8,7 @@
         .input-container {
             display: flex;
             align-items: center;
+            margin-bottom: 10px;
         }
 
         .input-container input {
@@ -57,21 +58,25 @@
     <script>
         let requestCounter = 0;
 
-function pasteClipboard() {
-    navigator.clipboard.readText().then(text => {
-        var pidInput = document.getElementById("pid");
-        pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
-        // 清空第二个输入框
-        document.getElementById("number").value = "";
-    }).catch(err => {
-        console.error('Failed to read clipboard contents: ', err);
-    });
-}
+        function filterInput(event) {
+            event.target.value = event.target.value.replace(/\D/g, '');
+        }
+
+        async function pasteClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById("pid").value = text.replace(/\D/g, ''); // 仅保留数字
+                document.getElementById("number").value = "";
+            } catch (err) {
+                console.error('Failed to read clipboard contents: ', err);
+                alert("无法读取剪贴板内容，请手动粘贴。");
+            }
+        }
 
         function checkInput() {
             const currentRequest = ++requestCounter;
-            var pid = document.getElementById("pid").value;
-            var number = document.getElementById("number").value;
+            var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
+            var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
             var image = document.getElementById('image');
             var loadingText = document.getElementById('loading-text');
 
@@ -119,7 +124,7 @@ function pasteClipboard() {
 
         function nextImage() {
             var numberInput = document.getElementById("number");
-            var currentValue = numberInput.value.trim(); // Remove leading and trailing whitespace
+            var currentValue = numberInput.value.trim().replace(/\D/g, ''); // 去除空格并仅保留数字
             if (currentValue === "") {
                 numberInput.value = "1";
             } else {
@@ -131,7 +136,7 @@ function pasteClipboard() {
 
         function prevImage() {
             var numberInput = document.getElementById("number");
-            var currentValue = parseInt(numberInput.value.trim()); // Remove leading and trailing whitespace
+            var currentValue = parseInt(numberInput.value.trim().replace(/\D/g, '')); // 去除空格并仅保留数字
             if (currentValue > 1) {
                 numberInput.value = currentValue - 1;
             } else {
@@ -143,7 +148,7 @@ function pasteClipboard() {
         function downloadImage() {
             var imageUrl = document.getElementById("image").src;
 
-            if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/" ) {
+            if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
                 alert("下载失败：图片不存在");
                 return;
             }
@@ -166,7 +171,7 @@ function pasteClipboard() {
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
 
-                    // For mobile devices, we attempt to use Filesystem API or prompt a save dialog
+                    // 针对移动设备，尝试使用文件系统API或提示保存对话框
                     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
                         if (navigator.share) {
                             navigator.share({
@@ -191,14 +196,19 @@ function pasteClipboard() {
         }
 
         function clearInput() {
-            document.getElementById("image").src = "";
-            document.getElementById("image").style.display = "none";
-            document.getElementById('loading-text').style.display = "none";
+            document.getElementById("pid").value = ""; // 清空作品ID输入框
+            document.getElementById("number").value = ""; // 清空编号输入框
+            document.getElementById("image").src = ""; // 清空图片
+            document.getElementById("image").style.display = "none"; // 隐藏图片
+            document.getElementById('loading-text').style.display = "none"; // 隐藏加载文本
         }
 
         function refreshPage() {
             checkInput(); // 重新发送请求
         }
+
+        document.getElementById("pid").addEventListener("input", filterInput);
+        document.getElementById("number").addEventListener("input", filterInput);
     </script>
 </body>
 
