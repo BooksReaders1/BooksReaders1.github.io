@@ -243,6 +243,16 @@
             });
     }
 
+        async function getUrl(url){
+            try{
+                const response = await fetch(url);
+                return response;
+            }catch(error){
+                const response1 = await fetch(url.slice(0, -4) + "-1" + url.slice(-4));
+                return response1;
+            }
+        }
+
 async function downloadImageAndSaveToDevice() {
             var imageUrl = document.getElementById("image").src;
             if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
@@ -251,7 +261,7 @@ async function downloadImageAndSaveToDevice() {
             }
 
             try {
-                const response = await fetch(imageUrl);
+                const response = await getUrl(imageUrl);
                 if (!response.ok) {
                     throw new Error("下载失败：图片不存在");
                 }
@@ -322,4 +332,3 @@ async function downloadImageAndSaveToDevice() {
 </body>
 
 </html>
-
