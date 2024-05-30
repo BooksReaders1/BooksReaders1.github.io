@@ -10,60 +10,76 @@
             margin-bottom: 10px;
         }
 
-    .input-container input {
-        margin-right: 5px;
-    }
-
-    #loading-text {
-        display: none;
-    }
-
-    .btn {
-        background-color: blue;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        margin: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s, box-shadow 0.3s;
-    }
-
-    .btn:hover {
-        background-color: darkblue;
-    }
-
-    .btn:active {
-        background-color: navy;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    }
-
-    .btn:disabled {
-        background-color: grey;
-        cursor: not-allowed;
-    }
-
-    .btn-clear {
-        background-color: red;
-    }
-
-    /* CSS媒体查询 */
-    @media (max-width: 600px) {
-        .input-container {
-            flex-direction: column;
-            align-items: flex-start;
+        .input-container input {
+            margin-right: 5px;
         }
 
-        .input-container input {
-            margin-bottom: 10px;
-            margin-right: 0;
+        #loading-text {
+            display: none;
         }
 
         .btn {
-            width: 100%;
-            margin: 5px 0;
+            background-color: blue;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
-    }
-</style>
+
+        .btn:hover {
+            background-color: darkblue;
+        }
+
+        .btn:active {
+            background-color: navy;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            background-color: grey;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background-color: red;
+        }
+
+        /* CSS媒体查询 */
+        @media (max-width: 600px) {
+            .input-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .input-container input {
+                margin-bottom: 10px;
+                margin-right: 0;
+            }
+
+            .btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+
+        .image-container {
+            margin-bottom: 10px;
+        }
+
+        .image-container img {
+            display: block;
+            margin: 0 auto;
+            width: 500px; /* 修改图片宽度 */
+            max-width: 100%; /* 适应屏幕宽度 */
+        }
+
+        .image-number {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <p>在框内输入作品ID（如82775556）再按“查询”按钮即可查看对应作品</p>
@@ -80,98 +96,216 @@
     <button type="button" class="btn" id="pasteBtn" onclick="pasteClipboardWithDisable(this)">粘贴</button>
     <button type="button" class="btn btn-clear" id="clearBtn" onclick="clearInput()">清空</button>
     <button type="button" class="btn" id="refreshBtn" onclick="refreshPageWithDisable(this)">刷新</button>
+    <button type="button" class="btn" id="batchBtn" onclick="batchQuery()">批量查询</button>
     <br />
     <hr />
     <span id="loading-text"></span>
+    <div id="total-images"></div>
+    <div id="image-results"></div>
     <img id="image" src="" width="500" alt="" style="display: none;" />
+ 
     <noscript>无法使用JavaScript</noscript>
 
-<script>
-    let requestCounter = 0;
+    <script>
+        let requestCounter = 0;
+        let currentOperation = null; // "single" or "batch"
 
-    function filterInput(event) {
-        event.target.value = event.target.value.replace(/\D/g, '');
-    }
 
-    async function pasteClipboardWithDisable(button) {
-        try {
+        function filterInput(event) {
+            event.target.value = event.target.value.replace(/\D/g, '');
+        }
+
+        async function pasteClipboardWithDisable(button) {
+            try {
+                button.disabled = true;
+                const text = await navigator.clipboard.readText();
+                const pidInput = document.getElementById("pid");
+                pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
+                document.getElementById("number").value = "";
+            } catch (err) {
+                console.error('Failed to read clipboard contents: ', err);
+            } finally {
+                setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
+            }
+        }
+
+        function checkInputWithDisable(button) {
             button.disabled = true;
-            const text = await navigator.clipboard.readText();
-            const pidInput = document.getElementById("pid");
-            pidInput.value = text.replace(/\D/g, ''); // 仅保留数字
-            document.getElementById("number").value = "";
-        } catch (err) {
-            console.error('Failed to read clipboard contents: ', err);
-        } finally {
+            checkInput();
             setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
         }
-    }
 
-    function checkInputWithDisable(button) {
-        button.disabled = true;
-        checkInput();
-        setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
-    }
-        function downloadImageWithDisable(button) {
-            button.disabled = true;
-            downloadImageAndSaveToDevice();
-            setTimeout(() => button.disabled = false, 200);
+        // function downloadImageWithDisable(button) {
+        //     button.disabled = true;
+        //     downloadImageAndSaveToDevice();
+        //     setTimeout(() => button.disabled = false, 200);
+        // }
+
+        async function downloadImageWithDisable(button) {
+    button.disabled = true;
+
+    try {
+        if (currentOperation === "single") {
+            await downloadImageAndSaveToDevice();
+        } else if (currentOperation === "batch") {
+            await downloadBatchImagesAndSaveToDevice();
         }
-
-    function refreshPageWithDisable(button) {
-        button.disabled = true;
-        refreshPage();
+    } catch (err) {
+        console.error('下载失败: ', err);
+        alert('下载失败，请稍后再试');
+    } finally {
         setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
     }
+}
 
-    function checkInput() {
-        const currentRequest = ++requestCounter;
-        var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
-        var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
-        var image = document.getElementById('image');
-        var loadingText = document.getElementById('loading-text');
+async function downloadImageAndSaveToDevice() {
+    const image = document.getElementById("image");
+    if (!image.src) {
+        alert("没有可下载的图片");
+        return;
+    }
 
-        // 取消之前的加载状态
-        image.src = "";
-        image.style.display = "none";
+    const pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
+    const number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
+    const imageUrl = image.src;
 
-        var tryImage = function(type) {
-            var imageUrl = "https://pixiv.re/" + pid;
-            if (number !== "") {
-                imageUrl += "-" + number;
+    try {
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+            throw new Error("下载失败：图片不存在");
+        }
+        const blob = await response.blob();
+
+        // 下载图片到本地
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${pid}${number ? '-' + number : ''}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        alert("图片已保存到设备！");
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+async function downloadBatchImagesAndSaveToDevice() {
+    const pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
+    const imageContainers = document.querySelectorAll('.image-container img');
+    
+    if (imageContainers.length === 0) {
+        alert("没有可下载的图片");
+        return;
+    }
+
+    for (let i = 0; i < imageContainers.length; i++) {
+        const imgElement = imageContainers[i];
+        const imgUrl = imgElement.src;
+        const imgName = `${pid}-${i + 1}.jpg`;
+
+        try {
+            const response = await fetch(imgUrl);
+            if (!response.ok) {
+                throw new Error(`下载失败：图片 ${imgName} 不存在`);
             }
-            imageUrl += "." + type;
+            const blob = await response.blob();
 
-            loadingText.innerText = "正在请求 " + imageUrl;
-            loadingText.style.display = "inline";
+            // 下载图片到本地
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = imgName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            alert(error.message);
+            return;
+        }
+    }
 
-            var img = new Image();
-            img.onload = function() {
-                if (requestCounter === currentRequest) {
-                    image.src = imageUrl;
-                    image.alt = "";
-                    loadingText.style.display = "none";
-                    image.style.display = "block";
+    alert("图片已保存到设备！");
+}
+
+
+
+        function refreshPageWithDisable(button) {
+    button.disabled = true;
+
+    // 清除当前操作结果
+    document.getElementById("image").src = "";
+    document.getElementById("image").style.display = "none";
+    document.getElementById('loading-text').style.display = "none";
+    document.getElementById('total-images').innerText = "";
+    document.getElementById('image-results').innerHTML = "";
+
+    // 重新执行当前请求
+    if (currentOperation === "single") {
+        checkInput();
+    } else if (currentOperation === "batch") {
+        batchQuery();
+    }
+
+    setTimeout(() => button.disabled = false, 200); // 延时恢复按钮
+}
+
+
+        function checkInput() {
+            currentOperation = "single"; // 设置当前操作为单张查询
+            const currentRequest = ++requestCounter;
+            document.getElementById("image-results").innerHTML = ""; // 清空批量查询结果
+            var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
+            var number = document.getElementById("number").value.replace(/\D/g, ''); // 仅保留数字
+            var image = document.getElementById('image');
+            var loadingText = document.getElementById('loading-text');
+
+            // 取消之前的加载状态
+            image.src = "";
+            image.style.display = "none";
+
+            var tryImage = function (type) {
+                var imageUrl = "https://pixiv.re/" + pid;
+                if (number !== "") {
+                    imageUrl += "-" + number;
                 }
-            };
-            img.onerror = function() {
-                if (requestCounter === currentRequest) {
-                    if (type === "jpg") {
-                        tryImage("png");
-                    } else if (type === "png") {
-                        tryImage("gif");
-                    } else {
+                imageUrl += "." + type;
+
+                loadingText.innerText = "正在请求 " + imageUrl;
+                loadingText.style.display = "inline";
+
+                var img = new Image();
+                img.onload = function () {
+                    if (requestCounter === currentRequest) {
+                        image.src = imageUrl;
+                        image.alt = "";
                         loadingText.style.display = "none";
-                        image.alt = "图片不存在";
                         image.style.display = "block";
                     }
-                }
+                };
+                img.onerror = function () {
+                    if (requestCounter === currentRequest) {
+                        if (type === "jpg") {
+                            tryImage("png");
+                        } else if (type === "png") {
+                            tryImage("gif");
+                        } else {
+                            loadingText.style.display = "none";
+                            image.alt = "图片不存在";
+                            image.style.display = "block";
+                        }
+                    }
+                };
+                img.src = imageUrl;
             };
-            img.src = imageUrl;
-        };
 
-        tryImage("jpg");
-    }
+            tryImage("jpg");
+        }
 
     function nextImage() {
         var numberInput = document.getElementById("number");
@@ -196,102 +330,102 @@
         checkInput();
     }
 
-    function downloadImage() {
-        var imageUrl = document.getElementById("image").src;
-        if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
-            alert("下载失败：图片不存在");
-            return;
+    // function downloadImage() {
+    //     var imageUrl = document.getElementById("image").src;
+    //     if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
+    //         alert("下载失败：图片不存在");
+    //         return;
+    //     }
+
+    //     fetch(imageUrl)
+    //         .then(response => {
+    //             if (!response.ok) {
+    //                 throw new Error("下载失败：图片不存在");
+    //             }
+    //             return response.blob();
+    //         })
+    //         .then(blob => {
+    //             var url = window.URL.createObjectURL(blob);
+    //             var a = document.createElement('a');
+    //             a.style.display = 'none';
+    //             a.href = url;
+    //             a.download = 'pixiv_image' + getImageExtension(imageUrl);
+    //             document.body.appendChild(a);
+    //             a.click();
+    //             window.URL.revokeObjectURL(url);
+    //             document.body.removeChild(a);
+
+    //             // 针对iOS设备，使用分享功能
+    //             if (navigator.share) {
+    //                 navigator.share({
+    //                     title: 'Pixiv Image',
+    //                     text: 'Download the image',
+    //                     url: url
+    //                 }).catch(error => console.error('Error sharing', error));
+    //             } else {
+    //                 // 使用Filesaver.js下载文件到iOS设备的文件系统
+    //                 var blobUrl = window.URL.createObjectURL(blob);
+    //                 var link = document.createElement('a');
+    //                 link.href = blobUrl;
+    //                 link.download = 'pixiv_image' + getImageExtension(imageUrl);
+    //                 link.click();
+    //                 window.URL.revokeObjectURL(blobUrl);
+    //             }
+    //         })
+    //         .catch(error => {
+    //             alert(error.message);
+    //         });
+    // }
+
+    async function getUrl(url) {
+        try {
+            const response = await fetch(url);
+            return response;
+        } catch (error) {
+            const response1 = await fetch(url.slice(0, -4) + "-1" + url.slice(-4));
+            return response1;
         }
-
-        fetch(imageUrl)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("下载失败：图片不存在");
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                var url = window.URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'pixiv_image' + getImageExtension(imageUrl);
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-
-                // 针对iOS设备，使用分享功能
-                if (navigator.share) {
-                    navigator.share({
-                        title: 'Pixiv Image',
-                        text: 'Download the image',
-                        url: url
-                    }).catch(error => console.error('Error sharing', error));
-                } else {
-                    // 使用Filesaver.js下载文件到iOS设备的文件系统
-                    var blobUrl = window.URL.createObjectURL(blob);
-                    var link = document.createElement('a');
-                    link.href = blobUrl;
-                    link.download = 'pixiv_image' + getImageExtension(imageUrl);
-                    link.click();
-                    window.URL.revokeObjectURL(blobUrl);
-                }
-            })
-            .catch(error => {
-                alert(error.message);
-            });
     }
 
-        async function getUrl(url){
-            try{
-                const response = await fetch(url);
-                return response;
-            }catch(error){
-                const response1 = await fetch(url.slice(0, -4) + "-1" + url.slice(-4));
-                return response1;
-            }
-        }
+    // async function downloadImageAndSaveToDevice() {
+    //     var imageUrl = document.getElementById("image").src;
+    //     if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
+    //         alert("下载失败：图片不存在");
+    //         return;
+    //     }
 
-async function downloadImageAndSaveToDevice() {
-            var imageUrl = document.getElementById("image").src;
-            if (!imageUrl || imageUrl === "" || imageUrl === "https://pixiv.re/" || imageUrl === "https://booksreaders1.github.io/") {
-                alert("下载失败：图片不存在");
-                return;
-            }
+    //     try {
+    //         const response = await getUrl(imageUrl);
+    //         if (!response.ok) {
+    //             throw new Error("下载失败：图片不存在");
+    //         }
+    //         const blob = await response.blob();
 
-            try {
-                const response = await getUrl(imageUrl);
-                if (!response.ok) {
-                    throw new Error("下载失败：图片不存在");
-                }
-                const blob = await response.blob();
+    //         // 下载图片到本地
+    //         var url = window.URL.createObjectURL(blob);
+    //         var a = document.createElement('a');
+    //         a.style.display = 'none';
+    //         a.href = url;
+    //         a.download = 'pixiv_image' + getImageExtension(imageUrl);
+    //         document.body.appendChild(a);
+    //         a.click();
+    //         window.URL.revokeObjectURL(url);
+    //         document.body.removeChild(a);
 
-                // 下载图片到本地
-                var url = window.URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'pixiv_image' + getImageExtension(imageUrl);
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-
-                // 尝试保存图片到设备相册
-                try {
-                    if ('contacts' in navigator && 'write' in navigator.contacts) {
-                        await navigator.contacts.write(blob);
-                        alert("图片已保存到相册！");
-                    } 
-                } catch (error) {
-                    console.error("保存图片到设备相册失败:", error);
-                    alert("保存图片到设备相册失败：" + error.message);
-                }
-            } catch (error) {
-                alert(error.message);
-            }
-        }
+    //         // 尝试保存图片到设备相册
+    //         try {
+    //             if ('contacts' in navigator && 'write' in navigator.contacts) {
+    //                 await navigator.contacts.write(blob);
+    //                 alert("图片已保存到相册！");
+    //             }
+    //         } catch (error) {
+    //             console.error("保存图片到设备相册失败:", error);
+    //             alert("保存图片到设备相册失败：" + error.message);
+    //         }
+    //     } catch (error) {
+    //         alert(error.message);
+    //     }
+    // }
 
     function getImageExtension(url) {
         var ext = url.split('.').pop();
@@ -302,33 +436,122 @@ async function downloadImageAndSaveToDevice() {
     }
 
     function clearInput() {
+
         document.getElementById("pid").value = ""; // 清空作品ID输入框
         document.getElementById("number").value = ""; // 清空编号输入框
         document.getElementById("image").src = ""; // 清空图片
         document.getElementById("image").style.display = "none"; // 隐藏图片
         document.getElementById('loading-text').style.display = "none"; // 隐藏加载文本
+        document.getElementById('total-images').innerText = ""; // 清空总图片数显示
+        document.getElementById('image-results').innerHTML = ""; // 清空批量查询结果
     }
 
-    function refreshPage() {
+
+    function refreshPage() {    
         checkInput(); // 重新发送请求
     }
 
-        document.getElementById("pid").addEventListener("input", filterInput);
-        document.getElementById("number").addEventListener("input", filterInput);
+    document.getElementById("pid").addEventListener("input", filterInput);
+    document.getElementById("number").addEventListener("input", filterInput);
 
-        function adjustLayout() {
-            const img = document.getElementById('image');
-            const containerWidth = window.innerWidth;
-            if (containerWidth < 600) {
-                img.style.width = '100%';
-            } else {
-                img.style.width = '500px';
-            }
+    function adjustLayout() {
+        const img = document.getElementById('image');
+        const containerWidth = window.innerWidth;
+        if (containerWidth < 600) {
+            img.style.width = '100%';
+        } else {
+            img.style.width = '500px';
         }
+    }
 
-        window.addEventListener('resize', adjustLayout);
-        window.addEventListener('load', adjustLayout);
-    </script>
+    window.addEventListener('resize', adjustLayout);
+    window.addEventListener('load', adjustLayout);
+
+    async function batchQuery() {
+        currentOperation = "batch"; // 设置当前操作为批量查询
+    const currentRequest = ++requestCounter;
+    var pid = document.getElementById("pid").value.replace(/\D/g, ''); // 仅保留数字
+    var imageResults = document.getElementById('image-results');
+    var loadingText = document.getElementById('loading-text');
+    
+    document.getElementById("image").src = ""; // 清空单个查询结果
+    document.getElementById("image").style.display = "none";
+
+    imageResults.innerHTML = "";
+    loadingText.innerText = "正在批量请求图片...";
+    loadingText.style.display = "inline";
+
+    let currentNumber = 1;
+    let images = [];
+    let currentImageUrl = `https://pixiv.re/${pid}-${currentNumber}.jpg`;
+
+    while (true) {
+        try {
+            const response = await fetch(currentImageUrl);
+            if (response.ok) {
+                images.push({ url: currentImageUrl, number: currentNumber });
+                currentNumber++;
+                currentImageUrl = `https://pixiv.re/${pid}-${currentNumber}.jpg`;
+            } else {
+                if (currentNumber === 1) {
+                    // 尝试没有数字的情况
+                    currentImageUrl = `https://pixiv.re/${pid}.jpg`;
+                    try{
+                    const responseWithoutNumber = await fetch(currentImageUrl);
+                    if (responseWithoutNumber.ok) {
+                        images.push({ url: currentImageUrl, number: '' });
+                    }}catch(err){
+                        break;
+                    }
+                }
+                break;
+            }
+        } catch (error) {
+            if (currentNumber === 1) {
+                    // 尝试没有数字的情况
+                    currentImageUrl = `https://pixiv.re/${pid}.jpg`;
+                    try{
+                    const responseWithoutNumber = await fetch(currentImageUrl);
+                    if (responseWithoutNumber.ok) {
+                        images.push({ url: currentImageUrl, number: '' });
+                    }}catch(err){
+                        break;
+                    }
+                }
+                break;
+        }
+    }
+
+    loadingText.style.display = "none";
+
+    if (images.length === 0) {
+        imageResults.innerHTML = "<p>没有找到图片</p>";
+    } else {
+        const totalImages = document.createElement('div');
+        totalImages.id = 'total-images';
+        totalImages.innerText = `共找到 ${images.length} 张图片`;
+        imageResults.appendChild(totalImages);
+
+        images.forEach((image) => {
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'image-container';
+
+            const imageNumber = document.createElement('div');
+            imageNumber.className = 'image-number';
+            imageNumber.innerText = `图片 ${image.number}`;
+            imageContainer.appendChild(imageNumber);
+
+            const imgElement = document.createElement('img');
+            imgElement.src = image.url;
+            imageContainer.appendChild(imgElement);
+
+            imageResults.appendChild(imageContainer);
+        });
+    }
+}
+
+
+</script>
 </body>
 
 </html>
