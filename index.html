@@ -170,7 +170,7 @@ async function downloadImageAndSaveToDevice() {
     const imageUrl = image.src;
 
     try {
-        const response = await fetch(imageUrl);
+        const response = await getUrl(imageUrl);
         if (!response.ok) {
             throw new Error("下载失败：图片不存在");
         }
@@ -202,6 +202,8 @@ async function downloadBatchImagesAndSaveToDevice() {
         return;
     }
 
+    let successCount = 0; // 成功下载的图片数量
+
     for (let i = 0; i < imageContainers.length; i++) {
         const imgElement = imageContainers[i];
         const imgUrl = imgElement.src;
@@ -224,14 +226,21 @@ async function downloadBatchImagesAndSaveToDevice() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+
+            successCount++;
         } catch (error) {
             alert(error.message);
             return;
         }
     }
 
-    alert("图片已保存到设备！");
+    if (successCount === 0) {
+        alert("没有成功下载任何图片");
+    } else {
+        alert(`成功下载 ${successCount} 张图片！`);
+    }
 }
+
 
 
 
@@ -476,12 +485,13 @@ async function downloadBatchImagesAndSaveToDevice() {
     
     document.getElementById("image").src = ""; // 清空单个查询结果
     document.getElementById("image").style.display = "none";
+    let currentNumber = 1;
 
     imageResults.innerHTML = "";
-    loadingText.innerText = "正在批量请求图片...";
+    loadingText.innerText = `正在批量请求图片 ${pid}-${currentNumber} ...`;
     loadingText.style.display = "inline";
 
-    let currentNumber = 1;
+
     let images = [];
     let currentImageUrl = `https://pixiv.re/${pid}-${currentNumber}.jpg`;
 
