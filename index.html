@@ -114,7 +114,15 @@
         function filterInput(event) {
             event.target.value = event.target.value.replace(/\D/g, '');
         }
-
+        window.onload = function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get('pid');
+        
+        if (pid) {
+            document.getElementById("pid").value = pid;
+            batchQuery();  // 自动执行批量查询
+          }
+        }
         async function pasteClipboardWithDisable(button) {
             try {
                 button.disabled = true;
