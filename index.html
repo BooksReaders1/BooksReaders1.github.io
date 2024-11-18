@@ -97,6 +97,9 @@
     <button type="button" class="btn btn-clear" id="clearBtn" onclick="clearInput()">清空</button>
     <button type="button" class="btn" id="refreshBtn" onclick="refreshPageWithDisable(this)">刷新</button>
     <button type="button" class="btn" id="batchBtn" onclick="batchQuery()">批量查询</button>
+<!-- 添加回到任务管理页面的按钮 -->
+<button type="button" class="btn" id="backToTaskPageBtn">回到任务管理页面</button>
+
     <br />
     <hr />
     <span id="loading-text"></span>
@@ -111,18 +114,34 @@
         let currentOperation = null; // "single" or "batch"
 
 
-        function filterInput(event) {
-            event.target.value = event.target.value.replace(/\D/g, '');
-        }
-        window.onload = function () {
+window.onload = function () {
         const urlParams = new URLSearchParams(window.location.search);
         const pid = urlParams.get('pid');
         
         if (pid) {
             document.getElementById("pid").value = pid;
             batchQuery();  // 自动执行批量查询
-          }
         }
+
+// 其他初始化代码
+    const backToTaskPageBtn = document.getElementById('backToTaskPageBtn');
+    
+    backToTaskPageBtn.addEventListener('click', function () {
+        const pid = document.getElementById('pid').value;  // 获取pid输入框的值
+        const taskPageUrl = 'https://booksreaders1.github.io/task/'; // 任务管理页面的URL
+        const searchParams = new URLSearchParams();
+        searchParams.set('pid', pid); // 将pid作为查询参数传递
+        
+        // 拼接URL并跳转
+        window.location.href = taskPageUrl + '?' + searchParams.toString();
+    });
+
+    // 其他逻辑...
+    }
+        function filterInput(event) {
+            event.target.value = event.target.value.replace(/\D/g, '');
+        }
+
         async function pasteClipboardWithDisable(button) {
             try {
                 button.disabled = true;
